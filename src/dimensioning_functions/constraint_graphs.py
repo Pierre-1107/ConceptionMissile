@@ -3,7 +3,35 @@ import numpy as np
 import os
 
 def constraint_graphs(choosen_oxydiser, keys_dict_main, length_tensor, mass_tensor, d_missile, isp_value, cruise_data_dict, img_path):
+    """
+    Génère des graphiques pour évaluer les contraintes de conception d'un missile en fonction du diamètre et des performances des oxydants.
 
+    Cette fonction produit un ensemble de graphiques montrant l'évolution des caractéristiques clés du missile
+    (longueur totale, ratio longueur/diamètre, et masse totale) pour différents oxydants, tout en mettant en évidence
+    les limites et les configurations acceptables.
+
+    Args:
+        choosen_oxydiser (str): Nom de l'oxydant choisi pour une analyse détaillée.
+        keys_dict_main (numpy.ndarray): Liste des noms des oxydants disponibles.
+        length_tensor (numpy.ndarray): Tableau 3D contenant les longueurs caractéristiques pour chaque oxydant et diamètre simulé.
+                                        Dimensions : (nombre d'oxydants, nombre de diamètres, 11).
+        mass_tensor (numpy.ndarray): Tableau 3D contenant les masses des différentes composantes pour chaque oxydant et diamètre simulé.
+                                    Dimensions : (nombre d'oxydants, nombre de diamètres, 7).
+        d_missile (numpy.ndarray): Tableau des diamètres simulés.
+        isp_value (numpy.ndarray): Tableau des impulsions spécifiques (en secondes) pour chaque oxydant.
+        cruise_data_dict (dict): Dictionnaire contenant les données de croisière pour chaque oxydant.
+                                Clés : noms des oxydants, valeurs : dictionnaires avec les propriétés.
+        img_path (str): Chemin où sauvegarder l'image générée.
+
+    Returns:
+        None: La fonction sauvegarde les graphiques sous forme d'image et les affiche.
+
+    Notes:
+        - Les graphiques incluent des courbes pour tous les oxydants ainsi qu'une analyse détaillée de l'oxydant sélectionné.
+        - Les limites acceptables pour la longueur, le ratio longueur/diamètre, et la masse sont mises en évidence.
+        - Les valeurs acceptables (satisfaisant les contraintes) sont affichées sous forme de points.
+    """
+    
     idx_choosen_oxydiser = np.where(keys_dict_main == choosen_oxydiser)[0][0]
     max_length = 6
     max_ratio = 16.5

@@ -3,7 +3,33 @@ import pandas as pd
 import os
 
 def generate_csv_txt(cruise_data_dict, d_missile, data_mission, length_tensor, mass_tensor, isp_value, densite_value, resultats_path, c):
+    """
+    Génère des fichiers CSV contenant les caractéristiques détaillées d'un missile pour chaque oxydant.
 
+    Cette fonction compile les données de conception du missile (masses, longueurs, caractéristiques propulsives) pour
+    différents oxydants et les exporte sous forme de fichiers CSV. Chaque fichier correspond à un oxydant.
+
+    Args:
+        cruise_data_dict (dict): Dictionnaire contenant les données de croisière pour chaque oxydant.
+                                Clés : noms des oxydants, valeurs : dictionnaires avec les propriétés.
+        d_missile (numpy.ndarray): Tableau des diamètres simulés.
+        data_mission (dict): Données de mission incluant les masses des composants fixes du missile.
+                            Clés attendues : 'mass' (dictionnaire des masses individuelles).
+        length_tensor (numpy.ndarray): Tableau 3D contenant les longueurs caractéristiques pour chaque oxydant et diamètre simulé.
+                                        Dimensions : (nombre d'oxydants, nombre de diamètres, 11).
+        mass_tensor (numpy.ndarray): Tableau 3D contenant les masses des différentes composantes pour chaque oxydant et diamètre simulé.
+                                    Dimensions : (nombre d'oxydants, nombre de diamètres, 7).
+        isp_value (numpy.ndarray): Tableau des impulsions spécifiques (en secondes) pour chaque oxydant.
+        densite_value (numpy.ndarray): Tableau des densités des oxydants pour chaque oxydant.
+        resultats_path (str): Chemin où sauvegarder les fichiers CSV générés.
+        c (dict): Dictionnaire contenant les coefficients de remplissage des réservoirs pour les phases d'accélération et de croisière.
+                Clés attendues :
+                - 'c_a' : coefficient de remplissage pour la phase d'accélération.
+                - 'c_c' : coefficient de remplissage pour la phase de croisière.
+
+    Returns:
+        None: Les fichiers CSV sont sauvegardés dans le dossier spécifié.
+    """
     shape = d_missile.shape[0]
 
     c_a = c['c_a']

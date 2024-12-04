@@ -3,6 +3,41 @@ from scipy.integrate import trapz
 
 
 def constraints_algo(time, data_mission, i, c, graph_component, iterate):
+    """
+    Calcule les contraintes liées à la conception d'un missile en fonction des paramètres d'entrée et des itérations d'optimisation.
+
+    Cette fonction simule les caractéristiques de masse et de longueur du missile, en évaluant les contraintes
+    liées à la phase d'accélération et de croisière, tout en ajustant un coefficient \(K\) pour satisfaire les conditions d'optimisation.
+
+    Args:
+        time (dict): Dictionnaire contenant les durées des phases de vol.
+                    Clés attendues : 't_acc' (durée de l'accélération), 't_cruise' (durée de la croisière).
+        data_mission (dict): Données de mission, incluant les propriétés aérodynamiques, physiques, et les masses du missile.
+                            Clés attendues : 'gamma', 'P_amb', 'Mach_cruise', 'g0', 'Cd_c', 'Delta_Vr', 'Isp_acc',
+                            'mass', 'rho'.
+        i (dict): Dictionnaire contenant les indices de construction des réservoirs pour l'accélération et la croisière.
+                Clés attendues :
+                - 'i_a' : indice de construction pour la phase d'accélération, défini par 
+                - 'i_c' : indice de construction pour la phase de croisière.
+        c (dict): Dictionnaire contenant les coefficients de remplissage des réservoirs pour les phases d'accélération et de croisière.
+                Clés attendues :
+                - 'c_a' : coefficient de remplissage pour la phase d'accélération, défini par 
+                - 'c_c' : coefficient de remplissage pour la phase de croisière.
+        graph_component (dict): Composantes pour les calculs aérodynamiques.
+                                Clés attendues : 'Mach_acc_arr' (Mach durant l'accélération),
+                                'Cx_acc_arr' (coefficient de traînée durant l'accélération).
+        iterate (dict): Données nécessaires pour itérer sur différentes configurations.
+                        Clés attendues : 'keys_dict_main' (configuration des oxydants),
+                        'cruise_data_dict' (données pour la phase de croisière).
+
+    Returns:
+        tuple:
+            - mass_tensor (numpy.ndarray): Tableau 3D contenant les masses des différentes composantes pour chaque diamètre simulé.
+            Dimensions : (nombre d'oxydants, nombre de diamètres, 7).
+            - length_tensor (numpy.ndarray): Tableau 3D contenant les longueurs caractéristiques du missile pour chaque diamètre simulé.
+            Dimensions : (nombre d'oxydants, nombre de diamètres, 11).
+            - d_missile (numpy.ndarray): Tableau des diamètres simulés.
+    """
 
     ## ----- GESTION DES ARGUMENTS ----- ##
     t_acc = time['t_acc']

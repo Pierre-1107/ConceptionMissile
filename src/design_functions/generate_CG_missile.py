@@ -2,8 +2,38 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
+from termcolor import colored
+
 
 def generate_CG_missile(time, c, m_dot, section_missile, row, diametre, img_path):
+    """
+    Calcule et trace l'évolution du centre de gravité (CG), de la masse du missile, et génère une image de la configuration du missile.
+
+    Cette fonction calcule le CG du missile en fonction du temps en utilisant deux approches (Bladder et Piston),
+    et génère des graphiques pour l'évolution du CG et de la masse. Elle trace également la géométrie complète du missile.
+
+    Args:
+        time (dict): Dictionnaire contenant les durées des phases du vol.
+                    Clés attendues : 't_acc' (durée de l'accélération), 't_cruise' (durée de la croisière).
+        c (dict): Dictionnaire contenant les coefficients de compression.
+                Clés attendues : 'c_a' (coefficient pour l'accélération), 'c_c' (coefficient pour la croisière).
+        m_dot (dict): Dictionnaire contenant les débits massiques.
+                    Clés attendues : 'mc_dot' (débit massique pour la croisière), 'ma_dot' (débit massique pour l'accélération).
+        section_missile (list): Liste des sections du missile. Chaque élément est un tuple contenant :
+                                (nom de la section, coordonnées x, coordonnées y, longueur, masse initiale,
+                                CG local de la section, couleur).
+        row (dict): Dictionnaire contenant les dimensions spécifiques du missile (longueurs des sections, etc.).
+        diametre (float): Diamètre du missile.
+        img_path (str): Chemin d'accès où sauvegarder l'image générée.
+
+    Returns:
+        tuple:
+            - CGx_dict (dict): Dictionnaire des positions du centre de gravité calculées.
+                            Clés : 'BLADDER', 'PISTON' (tableaux des CG pour chaque méthode).
+            - mass_dict (dict): Dictionnaire contenant les masses calculées.
+                                Clés : 'MASS' (masses par section), 'MASS_TOT' (masses totales).
+            - t_tot_array (numpy.ndarray): Tableau des instants de temps simulés.
+    """
 
     ## ----- GESTION DES ARGUMENTS ----- ##
     t_acc = time['t_acc']
@@ -82,7 +112,7 @@ def generate_CG_missile(time, c, m_dot, section_missile, row, diametre, img_path
 
                 elif section_name == "PROPERGOL CROISIÈRE":
 
-                    mass_array[t_idx, idx] = max(0.0, mass - mc_dot * (t - t_acc)) if t > t_acc else mass
+                    mass_array[t_idx, idx] = max(0.0, mass - 0.9 * mc_dot * (t - t_acc)) if t > t_acc else mass
                     previous_x_start = x_start - row['L_cruise_res']
 
                     ## ----- BLADDER METHOD ----- ##
@@ -94,9 +124,9 @@ def generate_CG_missile(time, c, m_dot, section_missile, row, diametre, img_path
                     L_cp_t = length * (0.9 * (t_cruise - (t - t_acc))/t_cruise + 0.1) if t > t_acc else length
                     DeltaL_piston = row['L_cruise_res'] - L_cp_t
                     x_position_piston = previous_x_start + DeltaL_piston
-
+                        
                     CG_num_piston += (x_position_piston + L_cp_t / 2) * mass_array[t_idx, idx]
-
+                    
         ## ----- EXPRESSION DES CG ----- ##
         CGx_bladder_array[t_idx] = CG_num_bladder / mass_array[t_idx, :].sum()
         CGx_piston_array[t_idx] = CG_num_piston / mass_array[t_idx, :].sum()
@@ -231,5 +261,21 @@ def generate_CG_missile(time, c, m_dot, section_missile, row, diametre, img_path
         'MASS': mass_array,
         'MASS_TOT': mass_array_2D
     }
+
+    print(f"----- MASSE DE PROPERGOL POUR LA PHASE DE CROISIÈRE -----")
+    mass_cruise_propergol = mass_array[:, 4]
+
+    mass_start = mass_cruise_propergol[0]
+    mass_end = mass_cruise_propergol[-1]
+
+    mass_percentage = (mass_end / mass_start) * 100
+    ecart = np.abs(mass_percentage - 10.0)
+
+    print(f"Masse de propergol en fin de croisière : {colored(mass_end, 'green')} kg")
+    print(f"Il reste {colored(f'{mass_end:.5f}', 'blue')} kg de propergol soit {colored(f'{mass_percentage:.4f} %', 'blue')} de la masse totale.")
+    if ecart < 1e-5:
+        print(f"{colored('Condition validé !', 'green')}")
+    else:
+        print(f"{colored('Condition non validé !', 'red')}")
 
     return CGx_dict, mass_dict, t_tot_array

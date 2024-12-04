@@ -4,7 +4,28 @@ import os
 from scipy.interpolate import interp1d
 
 def generate_Cx_Isp(Mach_cruise, shape, img_path):
+    """
+    Génère les données d'entrée pour une simulation aérodynamique et propulsive, et produit des graphiques des coefficients de traînée et des impulsions spécifiques.
 
+    Cette fonction interpole les coefficients de traînée (\(C_x\)) et les impulsions spécifiques (\(I_{sp}\)) en fonction du nombre de Mach pour des phases d'accélération et de croisière. 
+    Elle génère également des graphiques pour visualiser ces paramètres.
+
+    Args:
+        Mach_cruise (float): Nombre de Mach en phase de croisière.
+        shape (int): Nombre de points pour l'interpolation et les courbes générées.
+        img_path (str): Chemin où sauvegarder les graphiques générés.
+
+    Returns:
+        tuple:
+            - keys_dict_main (numpy.ndarray): Noms des différents combustibles/comburants.
+            - cruise_data_dict (dict): Dictionnaire contenant les impulsions spécifiques et les densités pour chaque combustible/comburant.
+            - Cx_acc_arr (numpy.ndarray): Tableau interpolé des coefficients de traînée pour la phase d'accélération.
+            - Mach_acc_arr (numpy.ndarray): Tableau des nombres de Mach pour la phase d'accélération.
+            - isp_value (numpy.ndarray): Tableau des impulsions spécifiques (\(I_{sp}\)) pour chaque combustible/comburant à \(Mach_{cruise}\).
+            - Cd_c (float): Coefficient de traînée correspondant à \(Mach_{cruise}\) en phase de croisière.
+            - densite_value (list): Liste des densités pour chaque combustible/comburant.
+    """
+    
     # Données pour le Cx en fonction du Mach
     Mach_acc_dis = np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0])
     Cx_acc_dis = np.array([0.4, 0.4, 0.4, 0.415, 0.455, 0.75, 0.79, 0.74, 0.69, 0.645, 0.585])
