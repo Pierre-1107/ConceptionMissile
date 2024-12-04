@@ -27,6 +27,7 @@ def GenerateGIF(CGx_dict, mass_dict, t_tot_array, diametre, row, section_missile
     Returns:
         None: La fonction sauvegarde le fichier GIF dans le chemin spécifié et affiche les graphiques.
     """
+    
     PISTON_CG = CGx_dict["PISTON"].copy()
     BLADDER_CG = CGx_dict["BLADDER"].copy()
     MASS = mass_dict["MASS_TOT"].copy()
