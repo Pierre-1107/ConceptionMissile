@@ -249,7 +249,7 @@ def generate_CG_missile(time, c, m_dot, section_missile, row, diametre, img_path
     merged_axes.set_ybound([-1, 1])
 
     fig_path = os.path.join(img_path, "Missile_CG_Mass.jpg")
-    plt.savefig(fig_path, dpi=300, bbox_inches='tight', quality=95)
+    plt.savefig(fig_path, dpi=300, bbox_inches='tight')
     plt.show()
 
     CGx_dict = {

@@ -95,7 +95,7 @@ def generate_Cx_Isp(Mach_cruise, shape, img_path):
     axes[1].set_title("Isp en fonction du Mach et du comburant")
 
     fig_path = os.path.join(img_path, "Parametres de simulation.jpg")
-    plt.savefig(fig_path, dpi=300, bbox_inches='tight', quality=95)
+    plt.savefig(fig_path, dpi=300, bbox_inches='tight')
     plt.show()
 
     isp_value = np.zeros(4)

@@ -92,7 +92,7 @@ def generate_ogive_shape(row, diametre, img_path):
     axes.set_title("Profil de l'ogive", fontsize=16)
 
     fig_path = os.path.join(img_path, "OgiveShape.jpg")
-    plt.savefig(fig_path, dpi=300, bbox_inches='tight', quality=95)
+    plt.savefig(fig_path, dpi=300, bbox_inches='tight')
     plt.show()
 
     return x_ogive, y_ogive, x_CG_ogive

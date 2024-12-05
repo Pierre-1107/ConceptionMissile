@@ -120,5 +120,5 @@ def constraint_graphs(choosen_oxydiser, keys_dict_main, length_tensor, mass_tens
         ax.grid("on", alpha=0.5, linestyle="-.")
 
     fig_path = os.path.join(img_path, "Caracteristiques_(3-2).jpg")
-    plt.savefig(fig_path, dpi=300, bbox_inches='tight', quality=95)
+    plt.savefig(fig_path, dpi=300, bbox_inches='tight')
     plt.show()
