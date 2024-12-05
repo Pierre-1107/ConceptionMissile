@@ -10,5 +10,5 @@
    
    Installation des packages :
    ```bash
-   /chemin/vers/Projet conda install --yes --file /src/requirements.txt
+   conda install --yes --file /src/requirements.txt
    ```
