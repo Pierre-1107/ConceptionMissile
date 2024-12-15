@@ -4,144 +4,183 @@ import os
 
 from termcolor import colored
 
-
-def generate_CG_missile(time, c, m_dot, section_missile, row, diametre, img_path):
-    """
-    Calcule et trace l'évolution du centre de gravité (CG), de la masse du missile, et génère une image de la configuration du missile.
-
-    Cette fonction calcule le CG du missile en fonction du temps en utilisant deux approches (Bladder et Piston),
-    et génère des graphiques pour l'évolution du CG et de la masse. Elle trace également la géométrie complète du missile.
-
-    Args:
-        time (dict): Dictionnaire contenant les durées des phases du vol.
-                    Clés attendues : 't_acc' (durée de l'accélération), 't_cruise' (durée de la croisière).
-        c (dict): Dictionnaire contenant les coefficients de compression.
-                Clés attendues : 'c_a' (coefficient pour l'accélération), 'c_c' (coefficient pour la croisière).
-        m_dot (dict): Dictionnaire contenant les débits massiques.
-                    Clés attendues : 'mc_dot' (débit massique pour la croisière), 'ma_dot' (débit massique pour l'accélération).
-        section_missile (list): Liste des sections du missile. Chaque élément est un tuple contenant :
-                                (nom de la section, coordonnées x, coordonnées y, longueur, masse initiale,
-                                CG local de la section, couleur).
-        row (dict): Dictionnaire contenant les dimensions spécifiques du missile (longueurs des sections, etc.).
-        diametre (float): Diamètre du missile.
-        img_path (str): Chemin d'accès où sauvegarder l'image générée.
-
-    Returns:
-        tuple:
-            - CGx_dict (dict): Dictionnaire des positions du centre de gravité calculées.
-                            Clés : 'BLADDER', 'PISTON' (tableaux des CG pour chaque méthode).
-            - mass_dict (dict): Dictionnaire contenant les masses calculées.
-                                Clés : 'MASS' (masses par section), 'MASS_TOT' (masses totales).
-            - t_tot_array (numpy.ndarray): Tableau des instants de temps simulés.
-    """
+def generate_CG_missile(time, m_dot, section_missile, row, diametre, img_path):
 
     ## ----- GESTION DES ARGUMENTS ----- ##
     t_acc = time['t_acc']
     t_cruise = time['t_cruise']
 
-    c_a = c['c_a']
-    c_c = c['c_c']
-
     mc_dot = m_dot['mc_dot']
     ma_dot = m_dot['ma_dot']
 
-    ## ----- VECTEUR DE TEMPS ----- ##
-    size_arr = 1000
-    t_acc_array = np.linspace(0, t_acc, size_arr)
-    t_cruise_array = np.linspace(t_acc, t_acc + t_cruise, size_arr)
-    t_tot_array = np.concatenate([t_acc_array, t_cruise_array[1:]])
+    ## ----- GESTION DES VECTEURS ----- ##
 
-    ## ----- DÉFINITION DES VECTEURS ----- ##
-    CGx_bladder_array = np.zeros(shape=t_tot_array.shape[0])
-    CGx_piston_array = np.zeros(shape=t_tot_array.shape[0])
-    mass_array = np.zeros(shape=(t_tot_array.shape[0], len(section_missile)))
+    t_mission_acc = np.linspace(0, t_acc, 1000)
+    t_mission_cruise = np.linspace(t_acc, t_cruise + t_acc, 1000)
+    t_mission_array = np.concatenate([t_mission_acc, t_mission_cruise[1:]])
 
-    for t_idx, t in enumerate(t_tot_array):
+        ## ----- PHASE D'ACCÉLÉRATION ----- ##
+    mass_array_tot_acc = np.zeros(shape=(len(section_missile), t_mission_acc.shape[0]))
+    CG_position_acc = np.zeros(shape=(len(section_missile), t_mission_acc.shape[0]))
+    CG_array_acc = np.zeros(shape=t_mission_acc.shape[0])
+
+        ## ----- PHASE DE CROISIÈRE ----- ##
+    mass_array_tot_cruise = np.zeros(shape=(len(section_missile), t_mission_cruise.shape[0]))
+    CG_position_cruise_bladder = np.zeros(shape=(len(section_missile), t_mission_cruise.shape[0]))
+    CG_position_cruise_piston = np.zeros(shape=(len(section_missile), t_mission_cruise.shape[0]))
+    CG_array_cruise_bladder = np.zeros(shape=t_mission_cruise.shape[0])
+    CG_array_cruise_piston = np.zeros(shape=t_mission_cruise.shape[0])
+
+    ## ----- SIMULATION POUR LA PHASE D'ACCÉLÉRATION ----- ##
+
+    for t_idx, t_val in enumerate(t_mission_acc):
 
         x_start = 0.0
-        CG_num_bladder, CG_num_piston = 0.0, 0.0
 
-        for idx, (section_name, x_val, y_val, length, mass, section_CG, color) in enumerate(section_missile):
+        for idx, (section_name, _, _, length, mass, CG_pos, _) in enumerate(section_missile):
 
-            if section_name == "TUYÈRE":
-                mass_array[t_idx, idx] = mass if t <= t_acc else 0.0
+            ## ----- GESTION DES MASSES ----- ##
+            if section_name == "PROPERGOL ACCÉLÉRATION":
+                mass_array_tot_acc[idx, t_idx] = max(0.0, mass - t_val * ma_dot)
 
-            if not "PROPERGOL" in section_name and not section_name in ["ENTRÉE AIR", "AILES", "QUEUE"]:
+            elif section_name in ["RÉSERVOIR ACCÉLÉRATION", "TUYÈRE"]:
+                mass_array_tot_acc[idx, t_idx] = mass if t_val < t_acc else 0.0
 
-                new_CG = x_start + section_CG
-                mass_array[t_idx, idx] = mass
+            else:
+                mass_array_tot_acc[idx, t_idx] = mass
 
-                CG_num_bladder += new_CG * mass_array[t_idx, idx]
-                CG_num_piston += new_CG * mass_array[t_idx, idx]
-                
-                x_start += length
+            ## ----- GESTION DU CENTRE DE GRAVITÉ ----- ##
+            if section_name not in ["ENTRÉE AIR", "AILES", "QUEUE"]:
 
-            if section_name in ["ENTRÉE AIR", "AILES", "QUEUE"]:
+                if section_name in ["PROPERGOL CROISIÈRE", "PROPERGOL ACCÉLÉRATION"]:
 
+                    if section_name == "PROPERGOL CROISIÈRE":
+                        deltaL_cruise = row['L_cruise_res'] - row['L_cruise_prop']
+                        x_CG_prop_cruise = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + deltaL_cruise + length/2
+                        CG_position_acc[idx, t_idx] = mass_array_tot_acc[idx, t_idx] * x_CG_prop_cruise
+
+                    if section_name == "PROPERGOL ACCÉLÉRATION":
+                        deltaL_acc = row['L_acc_res'] - row['L_acc_prop']
+                        x_CG_prop_acc = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + row['L_cruise_res'] + row['L_engine_housing'] + deltaL_acc + length/2
+                        CG_position_acc[idx, t_idx] = mass_array_tot_acc[idx, t_idx] * x_CG_prop_acc
+                else:
+                    x_CG = x_start + CG_pos
+
+                    CG_position_acc[idx, t_idx] = mass_array_tot_acc[idx, t_idx] * x_CG
+
+                    x_start += length
+
+            else:
                 if section_name == "ENTRÉE AIR":
-                    mass_array[t_idx, idx] = mass
-                    position_AI = x_start - row['L_nozzle'] - section_CG
+                    start_AI = row['L_ogive'] + row['L_equipement'] + row['L_payload']
+                    end_AI = start_AI + row['L_cruise_res'] + row['L_engine_housing']
+                    CD_AI = (end_AI + start_AI) / 2
 
-                    CG_num_bladder += position_AI * mass_array[t_idx, idx]
-                    CG_num_piston += position_AI * mass_array[t_idx, idx]
+                    CG_position_acc[idx, t_idx] = mass_array_tot_acc[idx, t_idx] * (start_AI + CD_AI)
+                
+                if section_name == "AILES":
+                    start_W = row['L_ogive'] + row['L_equipement'] + row['L_payload']
+                    end_W = start_AI + length
+                    CD_W = (end_W + start_W) / 2
 
-                elif section_name == "AILES":
-                    mass_array[t_idx, idx] = mass
-                    position_W = x_start - row['L_nozzle'] - row['L_acc_res'] - row['L_engine_housing'] - section_CG
+                    CG_position_acc[idx, t_idx] = mass_array_tot_acc[idx, t_idx] * (start_W + CD_W)
 
-                    CG_num_bladder += position_W * mass_array[t_idx, idx]
-                    CG_num_piston += position_W * mass_array[t_idx, idx]
-
-                elif section_name == "QUEUE":
-                    mass_array[t_idx, idx] = mass
-                    position_T = x_start - row['L_nozzle'] - section_CG
-
-                    CG_num_bladder += position_T * mass_array[t_idx, idx]
-                    CG_num_piston += position_T * mass_array[t_idx, idx]
-
-            if "PROPERGOL" in section_name:
-                if section_name == "PROPERGOL ACCÉLÉRATION":
-                    mass_array[t_idx, idx] = max(0.0, mass - ma_dot * t) if t <= t_acc else 0.0
-                    previous_x_start = x_start - row['L_acc_res']
-
-                    Delta_bladder = length * (1/c_a - 1)
-                    x_position = previous_x_start + Delta_bladder
-
-                    CG_num_bladder += (x_position + length/2) * mass_array[t_idx, idx]
-                    CG_num_piston += (x_position + length/2) * mass_array[t_idx, idx]
-
-                elif section_name == "PROPERGOL CROISIÈRE":
-
-                    mass_array[t_idx, idx] = max(0.0, mass - 0.9 * mc_dot * (t - t_acc)) if t > t_acc else mass
-                    previous_x_start = x_start - row['L_cruise_res']
-
-                    ## ----- BLADDER METHOD ----- ##
-                    DeltaL_bladder = length * (1/c_c - 1)
-                    x_position_bladder = previous_x_start + DeltaL_bladder
-                    CG_num_bladder += (x_position_bladder + length / 2) * mass_array[t_idx, idx]
-
-                    ## ----- PISTON METHOD ----- ##
-                    L_cp_t = length * (0.9 * (t_cruise - (t - t_acc))/t_cruise + 0.1) if t > t_acc else length
-                    DeltaL_piston = row['L_cruise_res'] - L_cp_t
-                    x_position_piston = previous_x_start + DeltaL_piston
-                        
-                    CG_num_piston += (x_position_piston + L_cp_t / 2) * mass_array[t_idx, idx]
+                if section_name == "QUEUE":
+                    start_T = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + row['L_cruise_res'] + row['L_engine_housing'] - length
+                    end_T = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + row['L_cruise_res'] + row['L_engine_housing']
+                    CG_T = (start_T + end_T) / 2
                     
-        ## ----- EXPRESSION DES CG ----- ##
-        CGx_bladder_array[t_idx] = CG_num_bladder / mass_array[t_idx, :].sum()
-        CGx_piston_array[t_idx] = CG_num_piston / mass_array[t_idx, :].sum()
+                    CG_position_acc[idx, t_idx] = mass_array_tot_acc[idx, t_idx] * (start_T + CG_T)
+            
+        CG_array_acc[t_idx] = CG_position_acc[:, t_idx].sum() / mass_array_tot_acc[:, t_idx].sum()
 
-    mass_array_2D = np.zeros(shape=t_tot_array.shape[0])
-    for idx in range(t_tot_array.shape[0]):
-        mass_array_2D[idx] = mass_array[idx, :].sum()
+    ## ----- SIMULATION POUR LA PHASE DE CROISIÈRE ----- ##
+
+    for t_idx, t_val in enumerate(t_mission_cruise):
+
+        x_start = 0.0
+
+        for idx, (section_name, _, _, length, mass, CG_pos, _) in enumerate(section_missile):
+            
+            ## ----- GESTION DES MASSES ----- ##
+            if section_name in ["PROPERGOL ACCÉLÉRATION", "RÉSERVOIR ACCÉLÉRATION", "TUYÈRE"]:
+                mass_array_tot_cruise[idx, t_idx] = 0.0
+                CG_position_cruise_bladder[idx, t_idx] = 0.0
+                CG_position_cruise_piston[idx, t_idx] = 0.0
+
+            elif section_name == "PROPERGOL CROISIÈRE":
+                mass_array_tot_cruise[idx, t_idx] = max(0.0, mass - 0.9 * (t_val - t_acc) * mc_dot)
+
+            else:
+                mass_array_tot_cruise[idx, t_idx] = mass
+
+            ## ----- GESTION DU CENTRE DE GRAVITÉ ----- ##
+            if section_name not in ["ENTRÉE AIR", "AILES", "QUEUE", "PROPERGOL ACCÉLÉRATION", "RÉSERVOIR ACCÉLÉRATION", "TUYÈRE"]:
+
+                if section_name == "PROPERGOL CROISIÈRE":
+                    ## ----- BLADDER ----- ##
+                    deltaL_cruise = row['L_cruise_res'] - row['L_cruise_prop']
+                    x_CG_prop_cruise_bladder = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + deltaL_cruise + length/2
+                    CG_position_cruise_bladder[idx, t_idx] = mass_array_tot_cruise[idx, t_idx] * x_CG_prop_cruise_bladder
+
+                    ## ----- PISTON ----- ##
+                    L_cp_t = length * (0.9 * (t_cruise - (t_val - t_acc))/t_cruise + 0.1)
+                    deltaL_cruise_piston = row['L_cruise_res'] - L_cp_t
+                    x_CG_prop_cruise_piston = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + deltaL_cruise_piston + L_cp_t/2
+                    CG_position_cruise_piston[idx, t_idx] = mass_array_tot_cruise[idx, t_idx] * x_CG_prop_cruise_piston
+                
+                else:
+                    x_CG = x_start + CG_pos
+
+                    CG_position_cruise_bladder[idx, t_idx] = mass_array_tot_cruise[idx, t_idx] * x_CG
+                    CG_position_cruise_piston[idx, t_idx] = mass_array_tot_cruise[idx, t_idx] * x_CG
+
+                    x_start += length
+            else:
+                if section_name == "ENTRÉE AIR":
+                    start_AI = row['L_ogive'] + row['L_equipement'] + row['L_payload']
+                    end_AI = start_AI + row['L_cruise_res'] + row['L_engine_housing']
+                    CD_AI = (end_AI + start_AI) / 2
+
+                    CG_position_cruise_bladder[idx, t_idx] = mass_array_tot_cruise[idx, t_idx] * (start_AI + CD_AI)
+                    CG_position_cruise_piston[idx, t_idx] = mass_array_tot_cruise[idx, t_idx] * (start_AI + CD_AI)
+                
+                if section_name == "AILES":
+                    start_W = row['L_ogive'] + row['L_equipement'] + row['L_payload']
+                    end_W = start_AI + length
+                    CD_W = (end_W + start_W) / 2
+
+                    CG_position_cruise_bladder[idx, t_idx] = mass_array_tot_cruise[idx, t_idx] * (start_W + CD_W)
+                    CG_position_cruise_piston[idx, t_idx] = mass_array_tot_cruise[idx, t_idx] * (start_W + CD_W)
+
+                if section_name == "QUEUE":
+                    start_T = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + row['L_cruise_res'] + row['L_engine_housing'] - length
+                    end_T = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + row['L_cruise_res'] + row['L_engine_housing']
+                    CG_T = (start_T + end_T) / 2
+                    
+                    CG_position_cruise_bladder[idx, t_idx] = mass_array_tot_cruise[idx, t_idx] * (start_T + CG_T)
+                    CG_position_cruise_piston[idx, t_idx] = mass_array_tot_cruise[idx, t_idx] * (start_T + CG_T)
+
+        CG_array_cruise_bladder[t_idx] = CG_position_cruise_bladder[:, t_idx].sum() / mass_array_tot_cruise[:, t_idx].sum()
+        CG_array_cruise_piston[t_idx] = CG_position_cruise_piston[:, t_idx].sum() / mass_array_tot_cruise[:, t_idx].sum()
+
+
+    ## ----- CONCATÉNATION DES VECTEURS ----- ##
+    mass_array = np.concatenate([mass_array_tot_acc, mass_array_tot_cruise[:, 1:]], axis=1)
+    CG_x_bladder = np.concatenate([CG_array_acc, CG_array_cruise_bladder[1:]])
+    CG_x_piston = np.concatenate([CG_array_acc, CG_array_cruise_piston[1:]])
+
+    mass_array_2D = np.zeros(shape=t_mission_array.shape[0])
+    for idx in range(t_mission_array.shape[0]):
+        mass_array_2D[idx] = mass_array[:, idx].sum()
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 9))
 
     ## ----- ÉVOLUTION DU CENTRE DE GRAVITÉ ----- ##
     axes[0, 0].set_title('Évolution du centre de gravité', fontsize=16)
 
-    axes[0, 0].plot(t_tot_array, CGx_bladder_array, c="navy", label="BLADDER TANK")
-    axes[0, 0].plot(t_tot_array, CGx_piston_array, c="darkorange", label="PISTON TANK")
+    axes[0, 0].plot(t_mission_array, CG_x_bladder, c="navy", label="BLADDER TANK")
+    axes[0, 0].plot(t_mission_array, CG_x_piston, c="darkorange", label="PISTON TANK")
 
     axes[0, 0].set_xlabel("Temps [m]")
     axes[0, 0].set_ylabel("Centre de gravité [m]")
@@ -150,7 +189,7 @@ def generate_CG_missile(time, c, m_dot, section_missile, row, diametre, img_path
 
     ## ----- ÉVOLUTION DE LA MASSE ----- ##
     axes[0, 1].set_title('Évolution de la masse', fontsize=16)
-    axes[0, 1].plot(t_tot_array, mass_array_2D, c='navy', label='Évolution de la masse')
+    axes[0, 1].plot(t_mission_array, mass_array_2D, c='navy', label='Évolution de la masse')
     axes[0, 1].set_xlabel("Temps [m]")
     axes[0, 1].set_ylabel("Masse [kg]")
     axes[0, 1].grid('on', alpha=0.75, linestyle="-.")
@@ -160,7 +199,7 @@ def generate_CG_missile(time, c, m_dot, section_missile, row, diametre, img_path
     fig.delaxes(axes[1, 1])
     merged_axes = fig.add_subplot(2, 1, 2)
 
-    ## ----- MISSILE ----- ##
+        ## ----- MISSILE ----- ##
     merged_axes.set_title('Représentation du missile', fontsize=16)
 
     x_missile_array = np.linspace(row['L_ogive'], row['L_m'], 2000)
@@ -219,7 +258,8 @@ def generate_CG_missile(time, c, m_dot, section_missile, row, diametre, img_path
             merged_axes.fill_between(x=x_missile_array, y1=-y_max, y2=-y_min, where=(x_missile_array >= x_start_W) & (x_missile_array <= x_start_W + length), color=color, alpha=0.5, hatch="//")
 
         if section_name == "QUEUE":
-            x_start_T = row['L_m'] - row['L_nozzle'] - length
+            # x_start_T = row['L_m'] - row['L_nozzle'] - length
+            x_start_T = row['L_ogive'] + row['L_payload'] + row['L_equipement'] +  row['L_cruise_res'] + row['L_engine_housing'] - length
             y_min = 0.25 + diametre/2
             y_max = 0.4 + diametre/2
 
@@ -253,8 +293,8 @@ def generate_CG_missile(time, c, m_dot, section_missile, row, diametre, img_path
     plt.show()
 
     CGx_dict = {
-        'BLADDER': CGx_bladder_array,
-        'PISTON': CGx_piston_array
+        'BLADDER': CG_x_bladder,
+        'PISTON': CG_x_piston
     }
 
     mass_dict = {
@@ -263,7 +303,8 @@ def generate_CG_missile(time, c, m_dot, section_missile, row, diametre, img_path
     }
 
     print(f"----- MASSE DE PROPERGOL POUR LA PHASE DE CROISIÈRE -----")
-    mass_cruise_propergol = mass_array[:, 4]
+    mass_cruise_propergol = mass_array[4, :]
+    print(mass_cruise_propergol)
 
     mass_start = mass_cruise_propergol[0]
     mass_end = mass_cruise_propergol[-1]
@@ -278,4 +319,4 @@ def generate_CG_missile(time, c, m_dot, section_missile, row, diametre, img_path
     else:
         print(f"{colored('Condition non validé !', 'red')}")
 
-    return CGx_dict, mass_dict, t_tot_array
+    return CGx_dict, mass_dict, t_mission_array

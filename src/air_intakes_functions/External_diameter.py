@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Tuple
+from termcolor import colored
 
 def Get_external_diameter(thermophysic, oxydizer_density, abacusvalue, airintake_params, cruise_mass_flow):
 
@@ -28,7 +29,11 @@ def Get_external_diameter(thermophysic, oxydizer_density, abacusvalue, airintake
 
     def m_air_dot_fnc(cruise_mass_flow, f_stoch, r) -> float:
 
-        return cruise_mass_flow / (r * f_stoch)
+        m_air_dot = cruise_mass_flow / (r * f_stoch)
+
+        ## CALCUL À LA MAIN m_air_dot environ 94 kg/s
+        # m_air_dot = 94
+        return m_air_dot
     
     def section_c0_fnc(P_i0, T_i0, air_mass_flow) -> float:
 

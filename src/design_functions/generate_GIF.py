@@ -51,7 +51,7 @@ def GenerateGIF(CGx_dict, mass_dict, t_tot_array, diametre, row, section_missile
     axes[0, 0].grid('on', linestyle='-.', alpha=0.75)
     axes[0, 0].set_xlabel('Temps [s]')
     axes[0, 0].set_ylabel('Centre de gravité [m]')
-    axes[0, 0].set_xlim(0, t_array[-1])
+    axes[0, 0].set_xlim(-5, t_array[-1] + 5)
     axes[0, 0].set_ylim(
         min(BLADDER_CG_sampled.min(), PISTON_CG_sampled.min()) - 0.1,
         max(BLADDER_CG_sampled.max(), PISTON_CG_sampled.max()) + 0.1,
@@ -65,8 +65,8 @@ def GenerateGIF(CGx_dict, mass_dict, t_tot_array, diametre, row, section_missile
     axes[0, 1].grid('on', linestyle='-.', alpha=0.75)
     axes[0, 1].set_xlabel('Temps [s]')
     axes[0, 1].set_ylabel('Masse [kg]')
-    axes[0, 1].set_xlim(0, t_array[-1])
-    axes[0, 1].set_ylim(MASS_SAMPLED.min() - 0.1, MASS_SAMPLED.max() + 0.1)
+    axes[0, 1].set_xlim(-5, t_array[-1] + 5)
+    axes[0, 1].set_ylim(MASS_SAMPLED.min() - 10, MASS_SAMPLED.max() + 10)
     axes[0, 1].legend()
 
     def init():
@@ -158,7 +158,8 @@ def GenerateGIF(CGx_dict, mass_dict, t_tot_array, diametre, row, section_missile
             merged_axes.fill_between(x=x_missile_array, y1=-y_max, y2=-y_min, where=(x_missile_array >= x_start_W) & (x_missile_array <= x_start_W + length), color=color, alpha=0.5, hatch="//")
 
         if section_name == "QUEUE":
-            x_start_T = row['L_m'] - row['L_nozzle'] - length
+            # x_start_T = row['L_m'] - row['L_nozzle'] - length
+            x_start_T = row['L_ogive'] + row['L_payload'] + row['L_equipement'] +  row['L_cruise_res'] + row['L_engine_housing'] - length
             y_min = 0.25 + diametre/2
             y_max = 0.4 + diametre/2
 

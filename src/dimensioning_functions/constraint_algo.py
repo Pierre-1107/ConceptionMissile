@@ -121,7 +121,6 @@ def constraints_algo(time, data_mission, i, c, graph_component, iterate):
             K = 0.1
             K_vec = [K]
             eps = 1
-            count = 0
 
             ## ----- CALCUL DES MASSES ----- ##
                 # masses PDF:ELISA_3
@@ -167,13 +166,13 @@ def constraints_algo(time, data_mission, i, c, graph_component, iterate):
             L_cr = L_res_fnc(m_i=m_cp, rho_i=rho_c, d_m=d_m, c_i=c_c)
             L_ar = L_res_fnc(m_i=m_ap, rho_i=rho_a, d_m=d_m, c_i=c_a)
 
-            L_AirIntakes = L_cr + L_engine_housing + L_ar
+            L_AirIntakes = L_cr + L_engine_housing # + L_ar
             length_tensor[idx_deph, idx_row, 8] = L_AirIntakes
 
             L_tails = d_m
             length_tensor[idx_deph, idx_row, 9] = L_tails
 
-            L_Wings = L_cr
+            L_Wings = L_cr / 2
             length_tensor[idx_deph, idx_row, 10] = L_Wings
 
             ## ----- ASSIGNATION DES VALEURS DES LONGUEURS ----- ##
