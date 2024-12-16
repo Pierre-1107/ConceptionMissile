@@ -179,8 +179,8 @@ def generate_CG_missile(time, m_dot, section_missile, row, diametre, img_path):
     ## ----- ÉVOLUTION DU CENTRE DE GRAVITÉ ----- ##
     axes[0, 0].set_title('Évolution du centre de gravité', fontsize=16)
 
-    axes[0, 0].plot(t_mission_array, CG_x_bladder, c="navy", label="BLADDER TANK")
-    axes[0, 0].plot(t_mission_array, CG_x_piston, c="darkorange", label="PISTON TANK")
+    axes[0, 0].plot(t_mission_array, CG_x_bladder/diametre, c="navy", label="BLADDER TANK")
+    axes[0, 0].plot(t_mission_array, CG_x_piston/diametre, c="darkorange", label="PISTON TANK")
 
     axes[0, 0].set_xlabel("Temps [m]")
     axes[0, 0].set_ylabel("Centre de gravité [m]")
