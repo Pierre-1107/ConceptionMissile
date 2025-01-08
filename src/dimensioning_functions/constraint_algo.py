@@ -154,6 +154,8 @@ def constraints_algo(time, data_mission, i, c, graph_component, iterate):
 
                 K_prime = K_prime_expression(d_m=d_m, mass_fnc_t=M_fnc_t)
                 K_vec.append(K_prime)
+
+                L_Wings = 3 *d_m
                 
                 eps = K_vec[-1] - K_vec[-2]
             
@@ -166,13 +168,13 @@ def constraints_algo(time, data_mission, i, c, graph_component, iterate):
             L_cr = L_res_fnc(m_i=m_cp, rho_i=rho_c, d_m=d_m, c_i=c_c)
             L_ar = L_res_fnc(m_i=m_ap, rho_i=rho_a, d_m=d_m, c_i=c_a)
 
-            L_AirIntakes = L_cr + L_engine_housing # + L_ar
+            L_AirIntakes = L_cr + L_engine_housing + L_ar
             length_tensor[idx_deph, idx_row, 8] = L_AirIntakes
 
             L_tails = d_m
             length_tensor[idx_deph, idx_row, 9] = L_tails
 
-            L_Wings = L_cr / 2
+            # L_Wings = L_cr / 2
             length_tensor[idx_deph, idx_row, 10] = L_Wings
 
             ## ----- ASSIGNATION DES VALEURS DES LONGUEURS ----- ##

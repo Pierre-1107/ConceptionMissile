@@ -43,14 +43,14 @@ def generate_CG_missile(time, m_dot, section_missile, row, diametre, img_path):
             if section_name == "PROPERGOL ACCÉLÉRATION":
                 mass_array_tot_acc[idx, t_idx] = max(0.0, mass - t_val * ma_dot)
 
-            elif section_name in ["RÉSERVOIR ACCÉLÉRATION", "TUYÈRE"]:
+            elif section_name in ["TUYÈRE", "RÉSERVOIR ACCÉLÉRATION"]: #"RÉSERVOIR ACCÉLÉRATION",
                 mass_array_tot_acc[idx, t_idx] = mass if t_val < t_acc else 0.0
 
             else:
                 mass_array_tot_acc[idx, t_idx] = mass
 
             ## ----- GESTION DU CENTRE DE GRAVITÉ ----- ##
-            if section_name not in ["ENTRÉE AIR", "AILES", "QUEUE"]:
+            if section_name not in ["ENTRÉE AIR", "AILES", "QUEUE", "TUYÈRE"]:
 
                 if section_name in ["PROPERGOL CROISIÈRE", "PROPERGOL ACCÉLÉRATION"]:
 
@@ -73,7 +73,7 @@ def generate_CG_missile(time, m_dot, section_missile, row, diametre, img_path):
             else:
                 if section_name == "ENTRÉE AIR":
                     start_AI = row['L_ogive'] + row['L_equipement'] + row['L_payload']
-                    end_AI = start_AI + row['L_cruise_res'] + row['L_engine_housing']
+                    end_AI = start_AI + row['L_cruise_res'] + row['L_engine_housing'] + row['L_acc_res']
                     CD_AI = (end_AI + start_AI) / 2
 
                     CG_position_acc[idx, t_idx] = mass_array_tot_acc[idx, t_idx] * (start_AI + CD_AI)
@@ -86,8 +86,8 @@ def generate_CG_missile(time, m_dot, section_missile, row, diametre, img_path):
                     CG_position_acc[idx, t_idx] = mass_array_tot_acc[idx, t_idx] * (start_W + CD_W)
 
                 if section_name == "QUEUE":
-                    start_T = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + row['L_cruise_res'] + row['L_engine_housing'] - length
-                    end_T = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + row['L_cruise_res'] + row['L_engine_housing']
+                    start_T = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + row['L_cruise_res'] + row['L_engine_housing'] + row['L_acc_res'] - length
+                    end_T = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + row['L_cruise_res'] + row['L_engine_housing'] + row['L_acc_res']
                     CG_T = (start_T + end_T) / 2
                     
                     CG_position_acc[idx, t_idx] = mass_array_tot_acc[idx, t_idx] * (start_T + CG_T)
@@ -103,7 +103,7 @@ def generate_CG_missile(time, m_dot, section_missile, row, diametre, img_path):
         for idx, (section_name, _, _, length, mass, CG_pos, _) in enumerate(section_missile):
             
             ## ----- GESTION DES MASSES ----- ##
-            if section_name in ["PROPERGOL ACCÉLÉRATION", "RÉSERVOIR ACCÉLÉRATION", "TUYÈRE"]:
+            if section_name in ["PROPERGOL ACCÉLÉRATION", "TUYÈRE", "RÉSERVOIR ACCÉLÉRATION"]: #, "RÉSERVOIR ACCÉLÉRATION"
                 mass_array_tot_cruise[idx, t_idx] = 0.0
                 CG_position_cruise_bladder[idx, t_idx] = 0.0
                 CG_position_cruise_piston[idx, t_idx] = 0.0
@@ -115,7 +115,7 @@ def generate_CG_missile(time, m_dot, section_missile, row, diametre, img_path):
                 mass_array_tot_cruise[idx, t_idx] = mass
 
             ## ----- GESTION DU CENTRE DE GRAVITÉ ----- ##
-            if section_name not in ["ENTRÉE AIR", "AILES", "QUEUE", "PROPERGOL ACCÉLÉRATION", "RÉSERVOIR ACCÉLÉRATION", "TUYÈRE"]:
+            if section_name not in ["ENTRÉE AIR", "AILES", "QUEUE", "PROPERGOL ACCÉLÉRATION", "TUYÈRE", "RÉSERVOIR ACCÉLÉRATION"]: #, "RÉSERVOIR ACCÉLÉRATION"
 
                 if section_name == "PROPERGOL CROISIÈRE":
                     ## ----- BLADDER ----- ##
@@ -139,14 +139,14 @@ def generate_CG_missile(time, m_dot, section_missile, row, diametre, img_path):
             else:
                 if section_name == "ENTRÉE AIR":
                     start_AI = row['L_ogive'] + row['L_equipement'] + row['L_payload']
-                    end_AI = start_AI + row['L_cruise_res'] + row['L_engine_housing']
+                    end_AI = start_AI + row['L_cruise_res'] + row['L_engine_housing'] + row['L_acc_res']
                     CD_AI = (end_AI + start_AI) / 2
 
                     CG_position_cruise_bladder[idx, t_idx] = mass_array_tot_cruise[idx, t_idx] * (start_AI + CD_AI)
                     CG_position_cruise_piston[idx, t_idx] = mass_array_tot_cruise[idx, t_idx] * (start_AI + CD_AI)
                 
                 if section_name == "AILES":
-                    start_W = row['L_ogive'] + row['L_equipement'] + row['L_payload']
+                    start_W = row['L_ogive'] + row['L_equipement'] + row['L_payload'] 
                     end_W = start_AI + length
                     CD_W = (end_W + start_W) / 2
 
@@ -154,8 +154,8 @@ def generate_CG_missile(time, m_dot, section_missile, row, diametre, img_path):
                     CG_position_cruise_piston[idx, t_idx] = mass_array_tot_cruise[idx, t_idx] * (start_W + CD_W)
 
                 if section_name == "QUEUE":
-                    start_T = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + row['L_cruise_res'] + row['L_engine_housing'] - length
-                    end_T = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + row['L_cruise_res'] + row['L_engine_housing']
+                    start_T = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + row['L_cruise_res'] + row['L_engine_housing'] + row['L_acc_res'] - length
+                    end_T = row['L_ogive'] + row['L_equipement'] + row['L_payload'] + row['L_cruise_res'] + row['L_engine_housing'] + row['L_acc_res']
                     CG_T = (start_T + end_T) / 2
                     
                     CG_position_cruise_bladder[idx, t_idx] = mass_array_tot_cruise[idx, t_idx] * (start_T + CG_T)
@@ -259,7 +259,7 @@ def generate_CG_missile(time, m_dot, section_missile, row, diametre, img_path):
 
         if section_name == "QUEUE":
             # x_start_T = row['L_m'] - row['L_nozzle'] - length
-            x_start_T = row['L_ogive'] + row['L_payload'] + row['L_equipement'] +  row['L_cruise_res'] + row['L_engine_housing'] - length
+            x_start_T = row['L_ogive'] + row['L_payload'] + row['L_equipement'] +  row['L_cruise_res'] + row['L_engine_housing'] + row['L_acc_res'] - length
             y_min = 0.25 + diametre/2
             y_max = 0.4 + diametre/2
 
@@ -304,7 +304,7 @@ def generate_CG_missile(time, m_dot, section_missile, row, diametre, img_path):
 
     print(f"----- MASSE DE PROPERGOL POUR LA PHASE DE CROISIÈRE -----")
     mass_cruise_propergol = mass_array[4, :]
-    print(mass_cruise_propergol)
+    # print(mass_cruise_propergol)
 
     mass_start = mass_cruise_propergol[0]
     mass_end = mass_cruise_propergol[-1]

@@ -33,7 +33,6 @@ def Get_external_diameter(thermophysic, oxydizer_density, abacusvalue, airintake
 
         ## CALCUL À LA MAIN m_air_dot environ 94 kg/s
         # m_air_dot = 94
-        print(m_air_dot)
         return m_air_dot
     
     def section_c0_fnc(P_i0, T_i0, air_mass_flow) -> float:
