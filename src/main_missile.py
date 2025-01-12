@@ -30,6 +30,7 @@ from air_intakes_functions.AirIntakes_thickness import Get_AI_thickness
 
 from aero_function.Get_aero_components import Get_aero_components
 from aero_function.Get_Data_section import Get_Data_section
+from aero_function.Get_drag_data import Get_drag_data
 
 ## ================================= ##
 ## ----- CRÉATION DES DOSSIERS ----- ##
@@ -253,3 +254,13 @@ h_tail = data_Wings['h'][idx_tail]
 print(f"{colored('Données relatives à une gouverne :', 'red')}")
 print(f"    - {colored('m : ', 'blue')} {m_tail} m.")
 print(f"    - {colored('h_tail : ', 'blue')} {h_tail} m.\n")
+
+target_dict = {
+    'ogive': np.sqrt(3) * (diametre/row['L_ogive']),
+    'trap': diametre / 15,
+    'phi': 15,
+    'ratio': ((internal_diameter + 2*thickness) / external_diameter)**2,
+    'mach': data_mission['Mach_cruise']
+}
+
+drag_dict = Get_drag_data(target_dict, diametre, row)
