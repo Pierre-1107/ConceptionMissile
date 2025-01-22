@@ -2,6 +2,9 @@ from scipy.interpolate import interp1d
 from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.integrate import quad
+import pandas as pd
+from termcolor import colored
 
 def Get_drag_data(target_dict, diametre_dict, row, airfoil_data):
 
@@ -256,22 +259,142 @@ def Get_drag_data(target_dict, diametre_dict, row, airfoil_data):
 
     Cx_wave_ogive = Cx_wave_ogive_prod * (diametre/row['L_ogive'])**2
     Cx_wave_EA = 4 * Cx_interp * (A_m/A_ref)
-    Cx_wave_trap = Cx_trap[idx_hd]
     Cx_wing = 4 * (airfoil_data['aile']['K']/beta) * (airfoil_data['aile']['ratio_ec']**2) * airfoil_data['aile']['S']
     Cx_tail = 4 * (airfoil_data['gouverne']['K']/beta) * (airfoil_data['aile']['ratio_ec']**2) * airfoil_data['gouverne']['S']
 
     drag_wave = {
         'Cx_ogive': Cx_wave_ogive,
-        'Cx_trap': Cx_wave_trap,
+        'Cx_trap': Cx_trap[idx_hd],
         'Cx_EA': Cx_wave_EA,
         'Cx_wing': Cx_wing,
         'Cx_tail': Cx_tail
     }
 
     Cx_wave_tot = np.sum([val for val in drag_wave.values()])
+
+    ## ----- base drag ----- ##
+    tail_thickness = 0.06 * diametre
+    EA_tot_thickness = internal_diameter + 2 * thickness
+    end_surface_tail = 4 * tail_thickness * airfoil_data['gouverne']['height']
+    end_surface_EA = 4 * EA_tot_thickness * (0.5 * diametre_dict['h_AirIntakes'])
+    S_culot = 0.25 * np.pi * (0.1 * diametre)**2 + end_surface_EA + end_surface_tail
+
+    Cx_culot = - Cp_culot * (S_culot/(0.25 * np.pi * diametre**2))
+
+    ## ----- friction drag ----- ##
+
+    def Reynolds_Number(eq_length):
+
+        return (1.225 * 340 * target_dict['mach'] * eq_length) / (1.789*1e-5)
+    
+    def laminar_Cf(Re_L):
+
+        return (1.328 * f_lam_val) / np.sqrt(Re_L)
+    
+    def turbulent_Cf(Re_L):
+
+        return (0.0442 * f_turb_val) / (Re_L**(1/6))
+
+    def Get_x_prime(Re_L, x_tr):
+
+        return x_tr * (59.3 / Re_L**(2/5)) * (f_lam_val/f_turb_val)**(6/5)
+
+    def transition_Cf(Re_L, l_eq, l_prime):
+
+        return ((0.0442 * f_turb_val) / (Re_L**(1/6))) * (l_eq/l_prime)
+
+    def lift_surface_length_eq(c, c_prime):
+
+        return (c + c_prime) / 2
+
+    def lift_surface(h, c):
+
+        return h * (2*c - h * np.tan(np.deg2rad(30)))
+    
+    def dydx(x):
+        a, b, c = airfoil_data['ogive']['coeff']
+
+        return 2 * a * x + b
+
+    def arc_length(x):
+
+        return np.sqrt(1 + dydx(x)**2)
+    
+    arc_length_ogive, _ = quad(arc_length, 0, row['L_ogive'])
+    l_eq_fus = (row['L_m'] - row['L_nozzle'] - row['L_ogive']) + arc_length_ogive
+    S_fus = diametre_dict['S_ref'] + np.pi * diametre * (row['L_m'] - row['L_nozzle'] - row['L_ogive'])
+    l_eq_EA = row['L_AirIntakes']
+    S_ea = (np.pi * (diametre_dict['internal_diameter'] + 2 * diametre_dict['thickness']) * row['L_AirIntakes']) * 0.75
+
+    # --> wing
+    S_w = lift_surface(h=airfoil_data['aile']['height'], c=airfoil_data['aile']['corde'])
+    c_prime_w = (S_w/airfoil_data['aile']['height']) - airfoil_data['aile']['corde']
+    l_eq_wing = lift_surface_length_eq(c=airfoil_data['aile']['corde'], c_prime=c_prime_w)
+
+    # --> tail
+    S_t = lift_surface(h=airfoil_data['gouverne']['height'], c=airfoil_data['gouverne']['corde'])
+    c_prime_t = (S_t/airfoil_data['gouverne']['height']) - airfoil_data['gouverne']['corde']
+    l_eq_tail= lift_surface_length_eq(c=airfoil_data['gouverne']['corde'], c_prime=c_prime_t)
+
+    Re_fus = Reynolds_Number(eq_length=l_eq_fus)
+    Re_EA = Reynolds_Number(eq_length=l_eq_EA)
+    Re_wing = Reynolds_Number(eq_length=l_eq_wing)
+    Re_tail = Reynolds_Number(eq_length=l_eq_tail)
+    x_tr = (2 * 1e6 * 1.789*1e-5) / (1.225 * 340 * target_dict['mach'])
+
+    data_arr = [(l_eq_fus, 'FUSELAGE', Re_fus, 1, S_fus), (l_eq_EA, 'ENTRÉE D AIR', Re_EA, 4, S_ea), (l_eq_wing, 'AILE', Re_wing, 4, S_w), (l_eq_tail, 'GOUVERNE', Re_tail, 4, S_t)]
+    flow_type = np.zeros(shape=len(data_arr), dtype=str)
+    Cf_arr = np.zeros(shape=len(data_arr))
+    Cx_arr = np.zeros(shape=len(data_arr))
+
+    for idx, (l_eq_value, section_name, Re_section, factor, S_section) in enumerate(data_arr):
+
+        if l_eq_value < x_tr:
+            flow_type[idx] = 'LAMINAR'
+            Cf_arr[idx] = factor * laminar_Cf(Re_L=Re_section)
+            Cx_arr[idx] = Cf_arr[idx] * (S_section/diametre_dict['S_ref'])
+            
+        elif (x_tr < l_eq_value) & (l_eq_value < 10*x_tr):
+            flow_type[idx] = 'TRANSITION'
+            x_prime = Get_x_prime(Re_L=Re_section, x_tr=x_tr)
+            Cf_arr[idx] = factor * transition_Cf(Re_L=Re_section, l_eq=l_eq_value, l_prime=l_eq_value - x_prime)
+            Cx_arr[idx] = Cf_arr[idx] * (S_section/diametre_dict['S_ref'])
+
+        elif 10*x_tr < l_eq_value:
+            flow_type[idx] = 'TURBULENT'
+            Cf_arr[idx] = factor * turbulent_Cf(Re_L=Re_section)
+            Cx_arr[idx] = Cf_arr[idx] * (S_section/diametre_dict['S_ref'])
+
+    Cx_friction = np.sum(Cx_arr)
+
+    ## ----- output data ----- ##
     
     drag_dict = {
-        'Cx_wave': Cx_wave_tot
+        'Cx_wave': Cx_wave_tot,
+        'Cx_culot': Cx_culot,
+        'Cx_friction': Cx_friction
     }
 
-    return drag_wave, drag_dict, Cp_culot
+    ## ----- TABLE ----- ##
+    data_wave = {
+        'SECTION': ['OGIVE', 'PIEGE CL', 'ENTRÉE D AIR', 'AILE', 'GOUVERNE'],
+        'Cx_wave': list(drag_wave.values()),
+    }
+
+    data_friction = {
+        'SECTION' : ['FUSELAGE', 'ENTRÉE D AIR', 'AILE', 'GOUVERNE'],
+        'Cf': Cf_arr,
+        'Cx': Cx_arr
+    }
+
+    print(f"\n{colored('Tableau récapitulatif des informations de trainée d onde : ', 'yellow')}")
+    wave_table = pd.DataFrame(data_wave)
+    print(wave_table)
+
+    print(f"\n{colored('Tableau récapitulatif des informations de trainée de frottement : ', 'yellow')}")
+    friction_table = pd.DataFrame(data_friction)
+    print(friction_table)
+
+    print(f"\n{colored('Trainée de culot : ', 'yellow')} {Cx_culot}")
+
+    return drag_dict

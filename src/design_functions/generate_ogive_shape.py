@@ -95,4 +95,6 @@ def generate_ogive_shape(row, diametre, img_path):
     plt.savefig(fig_path, dpi=300, bbox_inches='tight')
     plt.show()
 
-    return x_ogive, y_ogive, x_CG_ogive
+    coeff = [a, b, c]
+
+    return x_ogive, y_ogive, x_CG_ogive, coeff

@@ -29,7 +29,8 @@ from air_intakes_functions.Internal_diameter import Get_internal_diameter
 from air_intakes_functions.AirIntakes_thickness import Get_AI_thickness
 
 from aero_function.Get_aero_components import Get_aero_components
-from aero_function.Get_Data_section import Get_Data_section
+from aero_function.Get_Steering_Angle import Get_Steering_Angle
+from aero_function.Get_section_component import Get_section_component
 from aero_function.Get_drag_data import Get_drag_data
 
 ## ================================= ##
@@ -104,7 +105,7 @@ constraint_graphs(choosen_oxydiser=choosen_oxydiser, keys_dict_main=keys_dict_ma
 ## ----- ALGORITHME DE DESIGN ----- ##
 ## ================================ ##
 
-x_ogive, y_ogive, x_CG_ogive = generate_ogive_shape(row=row, diametre=diametre, img_path=img_path)
+x_ogive, y_ogive, x_CG_ogive, coeff_ogive = generate_ogive_shape(row=row, diametre=diametre, img_path=img_path)
 
 L_missile = row[1]
 print(f"Longueur du missile : {colored(L_missile, 'blue')} m.")
@@ -198,69 +199,53 @@ print('')
 m_values = [0.5, 1.0, 1.5, 2.0, 2.5]
     ## ----- DIMENSIONNEMENT DES SURFACES PORTANTES ----- ##
 
-        ## --> AILE
-dimension_Wings = {
-    'c_section': 3*diametre,
+wing_data, wing_height = Get_section_component(corde=3*diametre, r_section=0.5 *diametre + h_AirIntakes, S_ref=0.25*np.pi*diametre**2, title="Données pour une aile", Cn_section=0.25 * Cn_dict['Cn_W'])
+tail_data, tail_height = Get_section_component(corde=diametre, r_section=0.5*(diametre + h_AirIntakes), S_ref=0.25*np.pi*diametre**2, title="Données pour une gouverne", Cn_section=0.25 * Cn_dict['Cn_T'])
+
+## ========================================================= ##
+## ----- ALGORITHME EXPRESSION DES DONNÉES DE TRAÎNÉES ----- ##
+## ========================================================= ##
+
+diametre_dict = {
     'diametre': diametre,
-    'r_section': diametre/2 + h_AirIntakes,
+    'internal_diameter': internal_diameter,
+    'external_diameter': external_diameter,
+    'thickness': thickness,
     'h_AirIntakes': h_AirIntakes,
-    'h_wing': None
+    'S_ref': 0.25 * np.pi * diametre**2
 }
-
-data_Wings = Get_Data_section(dimension=dimension_Wings, mach=data_mission['Mach_cruise'], section='W', angle=angle)
-indices = {f"idx_{int(m*10)}": np.argmin(np.abs(data_Wings['m'] - m)) for m in m_values}
-data_WF = {col: [data_Wings[col][idx] for idx in indices.values()] for col in data_Wings.keys()}
-
-data_DF_WF = pd.DataFrame(data_WF)
-print(data_DF_WF)
-
-        ## --> GOUVERNE
-Cn_1w = Cn_dict['Cn_W'] / 4
-print(f"\n{colored('Coefficient de portance pour une aile : ', 'yellow')} {Cn_1w}")
-
-idx_wing = np.argmin(np.abs(data_Wings['Cn_iso'] - Cn_1w))
-m_wing = data_Wings['m'][idx_wing]
-h_wing = data_Wings['h'][idx_wing]
-
-print(f"{colored('Données relatives à une aile :', 'red')}")
-print(f"    - {colored('m : ', 'blue')} {m_wing} m.")
-print(f"    - {colored('h_wing : ', 'blue')} {h_wing} m.\n")
-
-## ----- Données des gouvernes ----- ##
-
-dimension_Tails = {
-    'c_section': diametre,
-    'diametre': diametre,
-    'r_section': 0.5 * (diametre + h_AirIntakes),
-    'h_AirIntakes': h_AirIntakes,
-    'h_wing': h_wing
-}
-
-data_Tails = Get_Data_section(dimension=dimension_Tails, mach=data_mission['Mach_cruise'], section='T', angle=angle)
-indices = {f"idx_{int(m*10)}": np.argmin(np.abs(data_Tails['m'] - m)) for m in m_values}
-data_TF = {col: [data_Tails[col][idx] for idx in indices.values()] for col in data_Tails.keys()}
-
-data_DF_TF = pd.DataFrame(data_TF)
-print(data_DF_TF)
-
-## ----- CHOIX DE LA HAUTEUR ----- ##
-Cn_1T = Cn_dict['Cn_T'] / 4
-print(f"\n{colored('Coefficient de portance pour une gouverne : ', 'yellow')} {Cn_1T}")
-
-idx_tail = np.argmin(np.abs(data_Tails['Cn_iso'] - Cn_1T))
-m_tail = data_Wings['m'][idx_tail]
-h_tail = data_Wings['h'][idx_tail]
-
-print(f"{colored('Données relatives à une gouverne :', 'red')}")
-print(f"    - {colored('m : ', 'blue')} {m_tail} m.")
-print(f"    - {colored('h_tail : ', 'blue')} {h_tail} m.\n")
 
 target_dict = {
     'ogive': np.sqrt(3) * (diametre/row['L_ogive']),
-    'trap': diametre / 15,
+    'trap': 1 / 15,
     'phi': 15,
     'ratio': ((internal_diameter + 2*thickness) / external_diameter)**2,
     'mach': data_mission['Mach_cruise']
 }
 
-drag_dict = Get_drag_data(target_dict, diametre, row)
+airfoil_data = {
+    'aile': {
+        'ratio_ec': 3/100,
+        'K': 6,
+        'S': (wing_height * (2 * 3 * diametre) - wing_height * np.tan(np.deg2rad(30))) / (0.25 * np.pi * diametre**2),
+        'height': wing_height,
+        'corde': 3 * diametre
+    },
+
+    'gouverne': {
+        'ratio_ec': 6/100,
+        'K': 4,
+        'S': (tail_height * (2 * 3 * diametre) - tail_height * np.tan(np.deg2rad(30))) / (0.25 * np.pi * diametre**2),
+        'height': tail_height,
+        'corde': diametre
+    },
+
+    'ogive': {
+        'coeff': coeff_ogive,
+        'length': row['L_ogive']
+    }
+}
+
+drag_dict = Get_drag_data(target_dict, diametre_dict, row, airfoil_data)
+Cx_tot = np.sum([Cx_val for Cx_val in drag_dict.values()]) * 1.1
+print(f'{colored("Coefficient de traînée totale : ", "yellow")} {Cx_tot}')
