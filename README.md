@@ -19,4 +19,4 @@ git clone https://github.com/Pierre-1107/ConceptionMissile.git
    conda install --yes --file /src/requirements.txt
    ```
 
-L'ensemble du code est du rapport a été réalisé par Pierre Lambin et Paul Jauquet.
+L'ensemble de cet algorithme et du dimensionnement ont été réalisés par Pierre Lambin et Paul Jauquet.
