@@ -18,3 +18,5 @@ git clone https://github.com/Pierre-1107/ConceptionMissile.git
    ```bash
    conda install --yes --file /src/requirements.txt
    ```
+
+L'ensemble du code est du rapport a été réalisé par Pierre Lambin et Paul Jauquet.
