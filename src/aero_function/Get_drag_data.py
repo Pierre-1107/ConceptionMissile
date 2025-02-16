@@ -341,29 +341,33 @@ def Get_drag_data(target_dict, diametre_dict, row, airfoil_data):
     Re_wing = Reynolds_Number(eq_length=l_eq_wing)
     Re_tail = Reynolds_Number(eq_length=l_eq_tail)
     x_tr = (2 * 1e6 * 1.789*1e-5) / (1.225 * 340 * target_dict['mach'])
-
     data_arr = [(l_eq_fus, 'FUSELAGE', Re_fus, 1, S_fus), (l_eq_EA, 'ENTRÉE D AIR', Re_EA, 4, S_ea), (l_eq_wing, 'AILE', Re_wing, 4, S_w), (l_eq_tail, 'GOUVERNE', Re_tail, 4, S_t)]
-    flow_type = np.zeros(shape=len(data_arr), dtype=str)
+    # flow_type = np.zeros(shape=len(data_arr), dtype=str)
+    flow_type = []
     Cf_arr = np.zeros(shape=len(data_arr))
     Cx_arr = np.zeros(shape=len(data_arr))
 
     for idx, (l_eq_value, section_name, Re_section, factor, S_section) in enumerate(data_arr):
 
         if l_eq_value < x_tr:
-            flow_type[idx] = 'LAMINAR'
+            # flow_type[idx] = 'LAMINAR'
+            flow_type.append('LAMINAR')
             Cf_arr[idx] = factor * laminar_Cf(Re_L=Re_section)
             Cx_arr[idx] = Cf_arr[idx] * (S_section/diametre_dict['S_ref'])
             
         elif (x_tr < l_eq_value) & (l_eq_value < 10*x_tr):
-            flow_type[idx] = 'TRANSITION'
+            # flow_type[idx] = 'TRANSITION'
+            flow_type.append('TRANSITION')
             x_prime = Get_x_prime(Re_L=Re_section, x_tr=x_tr)
             Cf_arr[idx] = factor * transition_Cf(Re_L=Re_section, l_eq=l_eq_value, l_prime=l_eq_value - x_prime)
             Cx_arr[idx] = Cf_arr[idx] * (S_section/diametre_dict['S_ref'])
 
         elif 10*x_tr < l_eq_value:
-            flow_type[idx] = 'TURBULENT'
+            # flow_type[idx] = 'TURBULENT'
+            flow_type.append('TURBULENT')
             Cf_arr[idx] = factor * turbulent_Cf(Re_L=Re_section)
             Cx_arr[idx] = Cf_arr[idx] * (S_section/diametre_dict['S_ref'])
+
 
     Cx_friction = np.sum(Cx_arr)
 
@@ -384,7 +388,8 @@ def Get_drag_data(target_dict, diametre_dict, row, airfoil_data):
     data_friction = {
         'SECTION' : ['FUSELAGE', 'ENTRÉE D AIR', 'AILE', 'GOUVERNE'],
         'Cf': Cf_arr,
-        'Cx': Cx_arr
+        'Cx': Cx_arr, 
+        'TYPE': flow_type,
     }
 
     print(f"\n{colored('Tableau récapitulatif des informations de trainée d onde : ', 'yellow')}")

@@ -183,7 +183,7 @@ def generate_CG_missile(time, m_dot, section_missile, row, diametre, img_path):
     axes[0, 0].plot(t_mission_array, CG_x_piston/diametre, c="darkorange", label="PISTON TANK")
 
     axes[0, 0].set_xlabel("Temps [m]")
-    axes[0, 0].set_ylabel("Centre de gravité [m]")
+    axes[0, 0].set_ylabel(r"$\frac{X_{CG}}{d_m}$")
     axes[0, 0].grid('on', alpha=0.75, linestyle="-.")
     axes[0, 0].legend(loc="upper right")
 
